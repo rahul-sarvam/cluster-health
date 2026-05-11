@@ -1,0 +1,49 @@
+# Expected InfiniBand topology for the 1024x B200 cluster.
+#
+# Two purposes:
+#   1. Sanity-check that every host has the expected number of NDR ports
+#      at the expected width.
+#   2. Cross-check that each host's HCA GUIDs land on the expected leaf
+#      switch port (catches miscabled racks).
+#
+# Most clusters arrive with a vendor-supplied "cable map" spreadsheet -
+# translate that map into this file once, then cable_validate.py keeps it
+# honest across re-cables, re-installs, and BMC swaps.
+
+cluster:
+  name: "sarvam-b200-1024"
+  # 128 hosts x 8 HCA ports = 1024 leaf-side ports.
+  expected_link_speed: "NDR"          # mlxlink ActiveSpeed must equal this
+  expected_link_width: "4x"           # ActiveWidth must equal this
+  expected_port_state: "Active"       # ibstat State must equal this
+  expected_phys_state: "LinkUp"       # ibstat PhysicalState must equal this
+
+# Per-host requirements. The default applies unless overridden in `hosts:`.
+defaults:
+  hca_count: 8                        # number of CX-7 HCAs per host
+  ports_per_hca: 1                    # single-port (data) per HCA; CX-7 dual-port boards have port 2 for storage if applicable
+  rail_count: 8                       # 8 rails per host (rail-optimized topology)
+
+# Rack -> leaf binding. Each leaf typically lands 8 hosts. The leaf_id
+# strings should match the SystemImageGUID or NodeDescription that
+# `ibnetdiscover` reports for that switch.
+racks:
+  - rack_id: "R01"
+    leaves:
+      - leaf_id: "leaf-r01-l1"        # TODO_FILL with actual NodeDescription
+        hosts: []                      # TODO_FILL: ["dgx-001","dgx-002",..., "dgx-008"]
+      - leaf_id: "leaf-r01-l2"
+        hosts: []
+  # ... repeat for R02 .. R16 ...
+
+# Spine wiring. cable_validate.py checks that each leaf has the expected
+# number of uplinks to the spine layer; flags leaves with missing uplinks.
+spine:
+  spine_count_expected: 8
+  uplinks_per_leaf_expected: 8        # full bisection: each leaf has 8 spine uplinks
+
+# Pre-FEC BER ceiling. Anything dirtier than this gets a WARN; 10x dirtier
+# gets a FAIL. Matches Day-1's MLXLINK_PRE_FEC_BER_MAX.
+ber:
+  pre_fec_warn: 1.0e-7
+  pre_fec_fail: 1.0e-6

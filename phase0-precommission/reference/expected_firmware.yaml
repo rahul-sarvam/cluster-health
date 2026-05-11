@@ -1,0 +1,58 @@
+# Expected firmware / driver manifest for the 1024x B200 cluster.
+#
+# Fill these values in BEFORE running firmware_baseline.sh for the first time.
+# Source of truth: the vendor's bring-up document (the spec sheet attached to
+# the PO, or the System Firmware Letter delivered with the racks). Once
+# accepted, this file becomes the contractual baseline. Any node whose
+# baseline drifts from this file is flagged in firmware_diff.py.
+#
+# The "majority" mode (used when this file is absent or has TODO_FILL values)
+# computes the modal value across the cohort and flags any node that
+# disagrees. Use that mode for the very first sweep to learn what the
+# vendor actually delivered, then promote those values here.
+
+cluster:
+  name: "sarvam-b200-1024"
+  node_count_expected: 128
+  gpus_per_node_expected: 8
+  nics_per_node_expected: 8
+
+# Host firmware - one value per field; firmware_diff.py treats any mismatch
+# as a hard failure (FIRMWARE_DRIFT_MAX_COMPONENTS=0 by default).
+host_firmware:
+  bios_version: "TODO_FILL_AT_BURNIN"            # e.g. "1.2.3"
+  bios_date: "TODO_FILL_AT_BURNIN"               # e.g. "03/15/2026"
+  sys_product: "TODO_FILL_AT_BURNIN"             # e.g. "DGX B200"
+  baseboard_mfg: "TODO_FILL_AT_BURNIN"           # e.g. "NVIDIA"
+
+# Linux / kernel / OS pins.
+host_os:
+  kernel: "TODO_FILL_AT_BURNIN"                  # e.g. "5.15.0-119-generic"
+  os_release_contains: "TODO_FILL_AT_BURNIN"     # e.g. "Ubuntu 22.04.5 LTS"
+
+# NVIDIA stack.
+nvidia_stack:
+  driver_smi: "TODO_FILL_AT_BURNIN"              # e.g. "550.127.05"
+  cuda_contains: "12.6"                          # nvcc --version output must contain this
+  vbios: "TODO_FILL_AT_BURNIN"                   # e.g. "97.00.4F.00.42"
+  fm_status: "active"                            # fabric manager must be active
+  fm_version_contains: "TODO_FILL_AT_BURNIN"     # e.g. "550.127"
+
+# Mellanox / NIC stack.
+mellanox_stack:
+  ofed_contains: "MLNX_OFED_LINUX-24.10"
+  mlx_fw_contains: "TODO_FILL_AT_BURNIN"         # e.g. "28.41.1000"
+  mst_cx_count: "8"                              # ConnectX devices counted by mst status
+
+# Collectives / container stack.
+software_stack:
+  nccl_pkg_contains: "2.23"                      # libnccl2 dpkg version contains this
+  enroot_contains: "TODO_FILL_AT_BURNIN"         # e.g. "3.5"
+  pyxis_contains: "TODO_FILL_AT_BURNIN"          # e.g. "0.20"
+
+# Kernel module fingerprints. These are srcversion hashes from `modinfo`.
+# They will differ from manifest only if someone has hand-patched a node.
+kernel_modules:
+  mod_nvidia_srcversion: "TODO_FILL_AT_BURNIN"
+  mod_peermem_srcversion: "TODO_FILL_AT_BURNIN"
+  mod_mlx5_srcversion: "TODO_FILL_AT_BURNIN"
