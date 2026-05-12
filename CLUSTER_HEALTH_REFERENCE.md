@@ -181,7 +181,7 @@ re-running individual sweeps is safe.
 
 ## 5. Phase 1 — Per-Node Qualification Gate (Day 1–3)
 
-State: **`[IMPLEMENTED]`** in [`day1-qualification/`](day1-qualification/).
+State: **`[IMPLEMENTED]`** in [`phase1-qualification/`](phase1-qualification/).
 
 The first 72 hours. Every node runs the same battery of single-node
 tests in parallel. The goal is to identify and quarantine any node that
@@ -195,39 +195,39 @@ Launch with:
 # Pre-flight on each node (one-time, idempotent — builds the four workloads):
 cd ../bootstrap && sudo ./install.sh phase1   # or ./install.sh verify
 
-cd day1-qualification
+cd phase1-qualification
 sbatch slurm/qualify_all_nodes.sbatch
 ```
 
 The orchestrator runs all ten checks per node, emits structured JSON,
-and feeds [`aggregate/cohort_analysis.py`](day1-qualification/aggregate/cohort_analysis.py)
+and feeds [`aggregate/cohort_analysis.py`](phase1-qualification/aggregate/cohort_analysis.py)
 which flags outliers. The final Markdown report is produced by
-[`aggregate/report.py`](day1-qualification/aggregate/report.py).
+[`aggregate/report.py`](phase1-qualification/aggregate/report.py).
 
 ### Phase 1 test catalogue
 
 | # | Test                       | What it catches                                                                   | Pass criterion                                                              | Script |
 |---|----------------------------|-----------------------------------------------------------------------------------|-----------------------------------------------------------------------------|--------|
-| 1.1 | Node sanity              | GPU count, model, mem size, persistence mode, ECC, MIG off, dmesg XIDs            | 8× B200, 192 GB, persistence/ECC on, MIG off, 0 critical XIDs               | [`checks/01_node_sanity.sh`](day1-qualification/checks/01_node_sanity.sh) |
-| 1.2 | Firmware inventory       | Driver / CUDA / NCCL / FM / OFED / BIOS / BMC / NIC FW versions                   | All nodes identical to pinned versions in `env.sh`                          | [`checks/02_firmware_inventory.sh`](day1-qualification/checks/02_firmware_inventory.sh) |
-| 1.3 | DCGM diagnostic          | NVIDIA's official validation suite (NVVS); HBM stress, GEMM, NVLink, ECC          | `dcgmi diag -r 4` and EUD plugin both PASS on every node                    | [`checks/03_dcgm_diag.sh`](day1-qualification/checks/03_dcgm_diag.sh) |
-| 1.4 | nvbandwidth              | Intra-node P2P (NVLink), H2D, D2H bandwidth                                       | P2P bidir min ≥ 1700 GB/s; H2D/D2H within 2% of cohort median               | [`checks/04_nvbandwidth.sh`](day1-qualification/checks/04_nvbandwidth.sh) |
-| 1.5 | HBM bandwidth            | Per-GPU HBM3e bandwidth (BabelStream triad)                                       | ≥ 7000 GB/s per GPU; no intra-node outlier > 2% below median                | [`checks/05_hbm_bandwidth.sh`](day1-qualification/checks/05_hbm_bandwidth.sh) |
-| 1.6 | GPU burn                 | 30-min thermal/power stress (FP16 GEMM loop)                                      | 0 errors; max temp ≤ 85°C; 0 thermal throttle events; 0 new SBE             | [`checks/06_gpu_burn.sh`](day1-qualification/checks/06_gpu_burn.sh) |
-| 1.7 | Intra-node NCCL          | 8-GPU all_reduce + alltoall, topology detection, SHARP path                       | AR busbw at 8 GiB ≥ 380 GB/s; topology shows expected NVL rails             | [`checks/07_intra_node_nccl.sh`](day1-qualification/checks/07_intra_node_nccl.sh) |
-| 1.8 | IB / fabric health       | Per-NIC link width, speed, pre-FEC BER, symbol errors                             | Link 4x NDR; pre-FEC BER ≤ 1e-7; 0 symbol errors                            | [`checks/08_ib_health.sh`](day1-qualification/checks/08_ib_health.sh) |
-| 1.9 | IB loopback bandwidth    | `ib_write_bw` host-mem and GPU-mem (GDR) per NIC pair                              | ≥ 380 Gb/s; GDR ratio ≥ 0.97 vs host-mem                                    | [`checks/09_ib_loopback_bw.sh`](day1-qualification/checks/09_ib_loopback_bw.sh) |
-| 1.10 | Host health             | NUMA topology, NVMe SMART, PTP offset, hugepages, host RAM                        | Expected NUMA; SMART clean; PTP offset within ±100 µs                       | [`checks/10_host_health.sh`](day1-qualification/checks/10_host_health.sh) |
+| 1.1 | Node sanity              | GPU count, model, mem size, persistence mode, ECC, MIG off, dmesg XIDs            | 8× B200, 192 GB, persistence/ECC on, MIG off, 0 critical XIDs               | [`checks/01_node_sanity.sh`](phase1-qualification/checks/01_node_sanity.sh) |
+| 1.2 | Firmware inventory       | Driver / CUDA / NCCL / FM / OFED / BIOS / BMC / NIC FW versions                   | All nodes identical to pinned versions in `env.sh`                          | [`checks/02_firmware_inventory.sh`](phase1-qualification/checks/02_firmware_inventory.sh) |
+| 1.3 | DCGM diagnostic          | NVIDIA's official validation suite (NVVS); HBM stress, GEMM, NVLink, ECC          | `dcgmi diag -r 4` and EUD plugin both PASS on every node                    | [`checks/03_dcgm_diag.sh`](phase1-qualification/checks/03_dcgm_diag.sh) |
+| 1.4 | nvbandwidth              | Intra-node P2P (NVLink), H2D, D2H bandwidth                                       | P2P bidir min ≥ 1700 GB/s; H2D/D2H within 2% of cohort median               | [`checks/04_nvbandwidth.sh`](phase1-qualification/checks/04_nvbandwidth.sh) |
+| 1.5 | HBM bandwidth            | Per-GPU HBM3e bandwidth (BabelStream triad)                                       | ≥ 7000 GB/s per GPU; no intra-node outlier > 2% below median                | [`checks/05_hbm_bandwidth.sh`](phase1-qualification/checks/05_hbm_bandwidth.sh) |
+| 1.6 | GPU burn                 | 30-min thermal/power stress (FP16 GEMM loop)                                      | 0 errors; max temp ≤ 85°C; 0 thermal throttle events; 0 new SBE             | [`checks/06_gpu_burn.sh`](phase1-qualification/checks/06_gpu_burn.sh) |
+| 1.7 | Intra-node NCCL          | 8-GPU all_reduce + alltoall, topology detection, SHARP path                       | AR busbw at 8 GiB ≥ 380 GB/s; topology shows expected NVL rails             | [`checks/07_intra_node_nccl.sh`](phase1-qualification/checks/07_intra_node_nccl.sh) |
+| 1.8 | IB / fabric health       | Per-NIC link width, speed, pre-FEC BER, symbol errors                             | Link 4x NDR; pre-FEC BER ≤ 1e-7; 0 symbol errors                            | [`checks/08_ib_health.sh`](phase1-qualification/checks/08_ib_health.sh) |
+| 1.9 | IB loopback bandwidth    | `ib_write_bw` host-mem and GPU-mem (GDR) per NIC pair                              | ≥ 380 Gb/s; GDR ratio ≥ 0.97 vs host-mem                                    | [`checks/09_ib_loopback_bw.sh`](phase1-qualification/checks/09_ib_loopback_bw.sh) |
+| 1.10 | Host health             | NUMA topology, NVMe SMART, PTP offset, hugepages, host RAM                        | Expected NUMA; SMART clean; PTP offset within ±100 µs                       | [`checks/10_host_health.sh`](phase1-qualification/checks/10_host_health.sh) |
 
 Gate decision is computed by
-[`aggregate/report.py`](day1-qualification/aggregate/report.py): a node
+[`aggregate/report.py`](phase1-qualification/aggregate/report.py): a node
 **FAILs** if it has any hard-failed check OR ≥ 2 cohort-outlier metrics.
 One outlier is **WARN** (do not deploy until investigated). All other
 nodes **PASS**.
 
 ## 6. Phase 2 — Intra-Rack Scale (Day 3–5)
 
-State: **`[NOT-YET-IMPLEMENTED]`** — spec below; tracked in [TODO.md §2](TODO.md).
+State: **`[IMPLEMENTED]`** — `phase2-intra-rack/`. See [phase2-intra-rack/README.md](phase2-intra-rack/README.md) for the runbook.
 
 Once every node has passed Phase 1, we scale up to 8, 16, 32, and 64
 GPUs — i.e. within a single leaf / rail group. This catches problems
@@ -235,20 +235,41 @@ that appear only once you cross the NVSwitch boundary onto the IB
 fabric but stays within a single failure domain. If something breaks at
 this scale, it is almost always one cable, one NIC, or one switch port.
 
+### Launching
+
+```bash
+# One-time, on every compute node in the rack:
+cd ../bootstrap && sudo ./install.sh phase2
+
+# Then, from a login node (one Slurm job per rack):
+cd phase2-intra-rack
+sbatch slurm/phase2.sbatch
+```
+
+The sbatch script grabs an 8-node × 64-GPU exclusive allocation and
+runs all six checks sequentially inside it. Each check emits a JSON
+fragment to `${P2_RESULTS}`; the aggregator (`aggregate/report.py`)
+rolls them into a Markdown report and exits non-zero on FAIL.
+
 ### Phase 2 test catalogue
 
 | # | Test                       | What it catches                                                                   | Pass criterion                                                              | Script |
 |---|----------------------------|-----------------------------------------------------------------------------------|-----------------------------------------------------------------------------|--------|
-| 2.1 | NCCL sweep at 8/16/32/64 | Bandwidth degradation curve as we cross 1, 2, 4, 8-node boundaries                | Busbw at each scale within published targets; smooth, monotonic curve       | `[NOT-YET-IMPLEMENTED — phase2-intra-rack/nccl_sweep.sh]` |
-| 2.2 | Small-message sweep      | Latency-dominated regime exposes bad routes that BW tests miss                    | Smooth, monotonic curve from 8 B to 1 GB                                    | `[NOT-YET-IMPLEMENTED — phase2-intra-rack/nccl_small_msg.sh]` |
-| 2.3 | Rail-isolated all-reduce | Run on `8 ranks × N nodes` where each rank uses only one rail                     | Each rail within 1% of cohort                                               | `[NOT-YET-IMPLEMENTED — phase2-intra-rack/rail_isolated.sh]` |
-| 2.4 | ClusterKit pair matrix   | All-pairs IB bandwidth + latency within rack                                      | Every (src, dst) within 5% of theoretical line rate; heatmap clean          | `[NOT-YET-IMPLEMENTED — phase2-intra-rack/clusterkit_intra.sh]` |
-| 2.5 | OSU intra-rack           | MPI orthogonal sanity (osu_allreduce, osu_alltoall, osu_bibw)                     | Within 3% of NCCL numbers                                                   | `[NOT-YET-IMPLEMENTED — phase2-intra-rack/osu_intra.sh]` |
-| 2.6 | Topology dump diff       | `NCCL_TOPO_DUMP_FILE` matches the intended rail-optimised topology                | Exact match against the vendor-supplied reference XML                       | `[NOT-YET-IMPLEMENTED — phase2-intra-rack/topo_check.sh]` |
+| 2.1 | NCCL sweep at 8/16/32/64 | Bandwidth degradation curve as we cross 1, 2, 4, 8-node boundaries                | Busbw at each scale within published targets; smooth, monotonic curve       | [`phase2-intra-rack/checks/01_nccl_sweep.sh`](phase2-intra-rack/checks/01_nccl_sweep.sh) |
+| 2.2 | Small-message sweep      | Latency-dominated regime exposes bad routes that BW tests miss                    | 8 B all-reduce latency ≤ `NCCL_AR_LATENCY_MAX_8B_US` (15 µs default)         | [`phase2-intra-rack/checks/02_nccl_small_msg.sh`](phase2-intra-rack/checks/02_nccl_small_msg.sh) |
+| 2.3 | Rail-isolated all-reduce | Run on `8 ranks × N nodes` where each rank uses only one rail                     | Each rail within `P2_RAIL_OUTLIER_PCT` (1% default) of cohort median        | [`phase2-intra-rack/checks/03_rail_isolated.sh`](phase2-intra-rack/checks/03_rail_isolated.sh) |
+| 2.4 | ClusterKit pair matrix   | All-pairs IB bandwidth + latency within rack                                      | Every (src, dst) within `P2_PAIR_OUTLIER_PCT` (5% default) of pair median   | [`phase2-intra-rack/checks/04_clusterkit_intra.sh`](phase2-intra-rack/checks/04_clusterkit_intra.sh) |
+| 2.5 | OSU intra-rack           | MPI orthogonal sanity (osu_allreduce, osu_alltoall)                               | OSU's effective BW within `P2_OSU_NCCL_AGREEMENT_PCT` (3% default) of NCCL  | [`phase2-intra-rack/checks/05_osu_intra.sh`](phase2-intra-rack/checks/05_osu_intra.sh) |
+| 2.6 | Topology dump diff       | `NCCL_TOPO_DUMP_FILE` matches the intended rail-optimised topology                | Exact match against `${P2_REF_TOPO}`; first run captures candidate ref     | [`phase2-intra-rack/checks/06_topo_check.sh`](phase2-intra-rack/checks/06_topo_check.sh) |
 
 ## 7. Phase 3 — Cross-Spine Scale: NCCL, HPL, Fabric (Day 5–7)
 
-State: **`[NOT-YET-IMPLEMENTED]`** — spec below; tracked in [TODO.md §3](TODO.md).
+State: **`[IMPLEMENTED]`** — runnable code lives in
+[`phase3-fullscale/`](phase3-fullscale/). Phase 3 takes a single
+full-cluster Slurm allocation, runs 11 checks sequentially (with
+bookended FEC + UFM snapshots at start and end so we can diff for
+mid-phase degradation), and produces a single Markdown report from
+[`aggregate/report.py`](phase3-fullscale/aggregate/report.py).
 
 Full-cluster scale (256, 512, 1024 GPUs). Everything in your original
 contract plan plus the corrections from the review. This is where we
@@ -259,21 +280,50 @@ issues, and the long tail of fabric pathologies.
 
 | # | Test                       | What it catches                                                                   | Pass criterion                                                              | Script |
 |---|----------------------------|-----------------------------------------------------------------------------------|-----------------------------------------------------------------------------|--------|
-| 3.1 | NCCL all-5 at 256/512/1024 | all_reduce, reduce_scatter, all_gather, alltoall, sendrecv                       | At 1024 GPUs: all_reduce busbw ≥ 400 GB/s; no >5% cliff between 64 and 1024 | `[WRAPS-DGXC — phase3-fullscale/nccl_sweep.sh wraps llmb-run submit -w nccl --scale 1024]` |
-| 3.2 | NCCL variance test       | 100 back-to-back full-cluster all_reduces                                         | std-dev < 2% of mean; p99/p50 ≤ 1.05                                        | `[WRAPS-DGXC — phase3-fullscale/nccl_variance.sh loops the dgxc nccl recipe 100×]` |
-| 3.3 | SHARP on/off              | In-network reduction working as advertised                                        | `NCCL_COLLNET_ENABLE=1` faster than 0 by expected margin; SHARP log present  | `[WRAPS-DGXC — phase3-fullscale/sharp_compare.sh runs dgxc nccl recipe with NCCL_COLLNET_ENABLE=0 and =1]` |
-| 3.4 | All-pairs IB sweep       | (src NIC, dst NIC) bandwidth heatmap at 1024 GPUs                                 | Every pair within 5% of line rate; no cold spots                            | `[NOT-YET-IMPLEMENTED — phase3-fullscale/clusterkit_fullscale.sh]` |
-| 3.5 | Adaptive routing test    | Bandwidth under intentional spine-collision pattern, AR on vs off                 | AR recovers ≥ 80% of uncongested BW                                         | `[NOT-YET-IMPLEMENTED — phase3-fullscale/ar_congestion.sh]` |
-| 3.6 | IB latency sweep         | `ib_write_lat` / `ib_read_lat` within leaf and across spine                       | ≤ 1.2 µs intra-leaf, ≤ 1.8 µs cross-spine                                   | `[NOT-YET-IMPLEMENTED — phase3-fullscale/ib_latency.sh]` |
-| 3.7 | FEC / BER capture        | `mlxlink` pre-FEC and post-FEC BER captured at start and end of phase             | Pre-FEC BER ≤ 1e-7 on every port; 0 post-FEC errors                         | `[NOT-YET-IMPLEMENTED — phase3-fullscale/fec_sweep.sh]` |
-| 3.8 | HPL FP64                 | High-Performance Linpack at full scale                                            | ≥ 60% of theoretical FP64 peak                                              | `[NOT-YET-IMPLEMENTED — phase3-fullscale/hpl_fp64.sh]` |
-| 3.9 | HPL-MxP                  | Mixed-precision HPL (AI-friendly Linpack)                                         | Within 5% of NVIDIA's published B200 reference for the same node count     | `[NOT-YET-IMPLEMENTED — phase3-fullscale/hpl_mxp.sh]` |
-| 3.10 | HPCG                    | Memory-bound HPCG                                                                 | ≥ 3% of HPL peak                                                            | `[NOT-YET-IMPLEMENTED — phase3-fullscale/hpcg.sh]` |
-| 3.11 | UFM telemetry snapshot  | Full UFM export at start and end of phase                                         | No port renegotiated to lower speed during phase                            | `[NOT-YET-IMPLEMENTED — phase3-fullscale/ufm_snapshot.sh]` |
+| 3.1 | NCCL all-5 at 256/512/1024 | all_reduce, reduce_scatter, all_gather, alltoall, sendrecv                       | At 1024 GPUs: all_reduce busbw ≥ 400 GB/s; no >5% cliff between 64 and 1024 | [`phase3-fullscale/checks/01_nccl_all5.sh`](phase3-fullscale/checks/01_nccl_all5.sh) |
+| 3.2 | NCCL variance test       | 100 back-to-back full-cluster all_reduces                                         | std-dev < 2% of mean; p99/p50 ≤ 1.05                                        | [`phase3-fullscale/checks/02_nccl_variance.sh`](phase3-fullscale/checks/02_nccl_variance.sh) |
+| 3.3 | SHARP on/off              | In-network reduction working as advertised                                        | `NCCL_COLLNET_ENABLE=1` faster than 0 by expected margin; SHARP log present  | [`phase3-fullscale/checks/03_sharp_compare.sh`](phase3-fullscale/checks/03_sharp_compare.sh) |
+| 3.4 | All-pairs IB sweep       | (src NIC, dst NIC) bandwidth heatmap at 1024 GPUs                                 | Every pair within `P3_PAIR_OUTLIER_PCT` (5% default) of pair median         | [`phase3-fullscale/checks/04_clusterkit_fullscale.sh`](phase3-fullscale/checks/04_clusterkit_fullscale.sh) |
+| 3.5 | Adaptive routing test    | Bandwidth under intentional spine-collision pattern, AR on vs off                 | AR-on recovers ≥ `P3_AR_RECOVERY_MIN_PCT` (80% default) of uncongested BW   | [`phase3-fullscale/checks/05_ar_congestion.sh`](phase3-fullscale/checks/05_ar_congestion.sh) |
+| 3.6 | IB latency sweep         | `ib_write_lat` within leaf and across spine                                       | ≤ 1.2 µs intra-leaf, ≤ 1.8 µs cross-spine (configurable)                    | [`phase3-fullscale/checks/06_ib_latency.sh`](phase3-fullscale/checks/06_ib_latency.sh) |
+| 3.7 | FEC / BER bookend        | `mlxlink` pre-FEC BER + symbol-error counters captured at start and end of phase  | Pre-FEC BER ≤ 1e-7 on every port; 0 increase in symbol_errors port-to-port  | [`phase3-fullscale/checks/07_fec_sweep.sh`](phase3-fullscale/checks/07_fec_sweep.sh) |
+| 3.8 | HPL FP64                 | High-Performance Linpack at full scale                                            | ≥ `P3_HPL_FP64_PEAK_FRAC_MIN` (60% default) of theoretical FP64 peak        | [`phase3-fullscale/checks/08_hpl_fp64.sh`](phase3-fullscale/checks/08_hpl_fp64.sh) |
+| 3.9 | HPL-MxP                  | Mixed-precision HPL (AI-friendly Linpack)                                         | Within `P3_HPL_MXP_REF_DEVIATION_PCT` (±5% default) of NVIDIA reference     | [`phase3-fullscale/checks/09_hpl_mxp.sh`](phase3-fullscale/checks/09_hpl_mxp.sh) |
+| 3.10 | HPCG                    | Memory-bound HPCG                                                                 | ≥ `P3_HPCG_HPL_FRAC_MIN` (3% default) of HPL TFlops (fallback: FP64 peak)   | [`phase3-fullscale/checks/10_hpcg.sh`](phase3-fullscale/checks/10_hpcg.sh) |
+| 3.11 | UFM REST snapshot       | UFM ports/links/events JSON captured at start and end of phase                    | No port renegotiated (active_speed/width/state) during phase                | [`phase3-fullscale/checks/11_ufm_snapshot.sh`](phase3-fullscale/checks/11_ufm_snapshot.sh) |
+
+### How to run it
+
+```bash
+# One-time bootstrap (verifies HPL/HPCG/llmb-run/jq + Phase 1/2 deps).
+sudo ./bootstrap/install.sh phase3
+
+# Launch the full Phase 3 suite against the cluster.
+sbatch phase3-fullscale/slurm/phase3.sbatch
+
+# Aggregate output: ${P3_RESULTS}/report.md
+```
+
+The sbatch wrapper grabs a single `--nodes=128 --exclusive` allocation,
+runs the baseline FEC + UFM snapshot, then checks 01–06 and 08–10
+sequentially, then captures the final FEC + UFM snapshot, and finally
+runs [`aggregate/report.py`](phase3-fullscale/aggregate/report.py)
+which both renders Markdown and exits with rc=0/1/2 (PASS/WARN/FAIL).
+
+The aggregator's synthetic-input smoke test lives at
+[`phase3-fullscale/aggregate/smoke_test.py`](phase3-fullscale/aggregate/smoke_test.py)
+and exercises both the happy path (everything passes, rc=0) and a
+failure path that triggers the cliff/FEC/UFM cross-cutting audits.
 
 ## 8. Phase 4 — Storage Scale (Day 7–9)
 
-State: **`[NOT-YET-IMPLEMENTED]`** — spec below; tracked in [TODO.md §4](TODO.md).
+State: **`[IMPLEMENTED]`** — runnable code lives in
+[`phase4-storage/`](phase4-storage/). Phase 4 takes a single
+full-cluster Slurm allocation, pre-flights the shared storage mount,
+runs 8 checks sequentially, and produces a single Markdown report from
+[`aggregate/report.py`](phase4-storage/aggregate/report.py) which
+includes a cross-cutting tail-amplification audit comparing the FIO
+baseline P99 against the noisy-neighbor under-load P99.
 
 Storage acceptance is where teams most often skip the hard parts and
 then suffer for years afterward. The two things we *must* verify are
@@ -286,14 +336,43 @@ reason".
 
 | # | Test                       | What it catches                                                                   | Pass criterion                                                              | Script |
 |---|----------------------------|-----------------------------------------------------------------------------------|-----------------------------------------------------------------------------|--------|
-| 4.1 | IOR sequential at 1024  | Aggregate read + write bandwidth                                                  | Read ≥ vendor-spec'd TB/s; sustained, not peak                              | `[NOT-YET-IMPLEMENTED — phase4-storage/ior_sequential.sh]` |
-| 4.2 | mdtest at 1024 ranks    | Metadata create/stat/open throughput                                              | ≥ 200k creates/sec for a global namespace                                   | `[NOT-YET-IMPLEMENTED — phase4-storage/mdtest.sh]` |
-| 4.3 | FIO mixed                | Per-client random IOPS, low-queue-depth latency                                   | Per-client ≥ 50k IOPS; tail latency P99 < 1 ms                              | `[NOT-YET-IMPLEMENTED — phase4-storage/fio_mixed.sh]` |
-| 4.4 | Elbencho with GDS        | GPUDirect Storage path bandwidth                                                  | Within 90% of network-layer line rate per NIC                               | `[NOT-YET-IMPLEMENTED — phase4-storage/elbencho_gds.sh]` |
-| 4.5 | MLPerf Storage           | Realistic dataloader I/O patterns (Unet3D / ResNet50 / CosmoFlow)                 | Vendor reference numbers for the model                                      | `[NOT-YET-IMPLEMENTED — phase4-storage/mlperf_storage.sh]` |
-| 4.6 | Checkpoint write storm   | 1024 GPUs simultaneously writing a DeepSeek-V3-sized shard                        | ≥ 22 GB/s sustained aggregate; 60s end-to-end                               | `[NOT-YET-IMPLEMENTED — phase4-storage/ckpt_storm.sh]` |
-| 4.7 | Noisy-neighbour          | Checkpoint storm during dataloader reads                                          | Read tail latency P99 ≤ 2× baseline                                         | `[NOT-YET-IMPLEMENTED — phase4-storage/noisy_neighbor.sh]` |
-| 4.8 | GDS dataloader path      | Real PyTorch `cufile` dataloader from real shard set                              | ≥ 80% of cached (RAM) tokens/sec                                            | `[NOT-YET-IMPLEMENTED — phase4-storage/gds_dataloader.py]` |
+| 4.1 | IOR sequential at 1024  | Aggregate read + write bandwidth                                                  | Read ≥ `P4_IOR_READ_GBS_MIN` (200 GB/s default); write ≥ `P4_IOR_WRITE_GBS_MIN` (100 GB/s) | [`phase4-storage/checks/01_ior_sequential.sh`](phase4-storage/checks/01_ior_sequential.sh) |
+| 4.2 | mdtest at 1024 ranks    | Metadata create/stat/open throughput                                              | ≥ `P4_MDTEST_CREATES_PER_SEC_MIN` (200k default) creates/sec global namespace | [`phase4-storage/checks/02_mdtest.sh`](phase4-storage/checks/02_mdtest.sh) |
+| 4.3 | FIO mixed                | Per-client random IOPS, low-queue-depth latency                                   | Per-client ≥ `P4_FIO_IOPS_MIN` (50k); P99 ≤ `P4_FIO_P99_LAT_US_MAX` (1000 µs) | [`phase4-storage/checks/03_fio_mixed.sh`](phase4-storage/checks/03_fio_mixed.sh) |
+| 4.4 | Elbencho with GDS        | GPUDirect Storage path bandwidth                                                  | ≥ `P4_ELBENCHO_LINE_RATE_FRAC_MIN` (0.90) of `P4_ELBENCHO_LINE_RATE_GBS` per NIC | [`phase4-storage/checks/04_elbencho_gds.sh`](phase4-storage/checks/04_elbencho_gds.sh) |
+| 4.5 | MLPerf Storage           | Realistic dataloader I/O patterns (Unet3D / ResNet50 / CosmoFlow)                 | Within `P4_MLPERF_DEVIATION_PCT` (10%) of `P4_MLPERF_REF_SAMPLES_PER_SEC` (warn if `TODO_FILL`) | [`phase4-storage/checks/05_mlperf_storage.sh`](phase4-storage/checks/05_mlperf_storage.sh) |
+| 4.6 | Checkpoint write storm   | 1024 GPUs simultaneously writing a DeepSeek-V3-sized shard                        | Agg ≥ `P4_CKPT_AGG_GBS_MIN` (22 GB/s) **AND** elapsed ≤ `P4_CKPT_DEADLINE_SEC` (60s) | [`phase4-storage/checks/06_ckpt_storm.sh`](phase4-storage/checks/06_ckpt_storm.sh) |
+| 4.7 | Noisy-neighbour          | Checkpoint storm during dataloader reads (50/50 reader/writer split)              | under-load P99 / baseline P99 ≤ `P4_NN_TAIL_AMPLIFICATION_MAX` (2.0)        | [`phase4-storage/checks/07_noisy_neighbor.sh`](phase4-storage/checks/07_noisy_neighbor.sh) |
+| 4.8 | GDS dataloader path      | Real PyTorch `cufile` dataloader from real shard set vs `/dev/shm` baseline       | disk_tokens_per_sec / ram_tokens_per_sec ≥ `P4_DALI_DISK_RAM_RATIO_MIN` (0.80) | [`phase4-storage/checks/08_gds_dataloader.sh`](phase4-storage/checks/08_gds_dataloader.sh) + [`dataloader.py`](phase4-storage/checks/dataloader.py) |
+
+### How to run it
+
+```bash
+# One-time bootstrap (builds IOR/mdtest + elbencho, installs fio,
+# verifies libcufile + torch, sets up MLPerf Storage). Requires
+# P4_STORAGE_ROOT pointing at the shared parallel filesystem.
+sudo ./bootstrap/install.sh phase4
+
+# Launch the full Phase 4 suite against the cluster.
+sbatch phase4-storage/slurm/phase4.sbatch
+
+# Aggregate output: ${P4_RESULTS}/report.md
+```
+
+The sbatch wrapper grabs a single `--nodes=128 --ntasks-per-node=8
+--exclusive` allocation, pre-flights `P4_STORAGE_ROOT` so an 8h
+allocation isn't burned on an unreachable filesystem, runs checks
+01–08 sequentially, and finally runs
+[`aggregate/report.py`](phase4-storage/aggregate/report.py) which both
+renders Markdown and exits with rc=0/1/2 (PASS/WARN/FAIL).
+
+The aggregator runs one cross-cutting analysis (`tail_audit`) that
+compares the steady-state FIO P99 from check 4.3 against the
+under-load P99 from check 4.7 and tags pass/warn/fail by ratio
+thresholds 1.5× / 2.0×. The synthetic-input smoke test lives at
+[`phase4-storage/aggregate/smoke_test.py`](phase4-storage/aggregate/smoke_test.py)
+and exercises both the happy path (everything passes, rc=0) and a
+failure path that triggers the tail-amplification cross-cutting audit.
 
 ## 9. Phase 5 — Long Soak: DeepSeek-V3 Pretraining (Day 9–16)
 
@@ -367,7 +446,7 @@ phase. This is what backs up future warranty claims.
 
 The bundle MUST contain (at minimum):
 
-- All per-node JSON outputs from Phase 1 ([day1-qualification/results/](day1-qualification/results/))
+- All per-node JSON outputs from Phase 1 ([phase1-qualification/results/](phase1-qualification/results/))
 - All NCCL test logs from Phases 2 and 3
 - The complete IB counter snapshot pre/post each phase (`ibdiagnet`, `mlxlink`)
 - DCGM telemetry export for the entire soak (Phase 5)
@@ -561,7 +640,7 @@ cluster-health/
 │   ├── aggregate/report.py                #    overall PASS/WARN/FAIL report
 │   ├── reference/expected_firmware.yaml   #    vendor firmware manifest (filled at burn-in)
 │   └── reference/expected_topology.yaml   #    expected rack→leaf cable map
-├── day1-qualification/                    # Phase 1 — IMPLEMENTED
+├── phase1-qualification/                    # Phase 1 — IMPLEMENTED
 │   ├── README.md                          #    how to run the per-node gate
 │   ├── slurm/qualify_all_nodes.sbatch     #    Slurm array launcher
 │   ├── slurm/env.sh                       #    paths, version pins, thresholds
@@ -579,16 +658,54 @@ cluster-health/
 │   ├── aggregate/parse_results.py         #    per-host rollup + cohort gather
 │   ├── aggregate/cohort_analysis.py       #    outlier detection
 │   └── aggregate/report.py                #    final Markdown report
-├── phase2-intra-rack/                     # [NOT-YET-IMPLEMENTED]
-├── phase3-fullscale/                      # [NOT-YET-IMPLEMENTED]
-├── phase4-storage/                        # [NOT-YET-IMPLEMENTED]
+├── phase2-intra-rack/                     # [IMPLEMENTED]
+│   ├── README.md
+│   ├── slurm/env.sh                       #    shared env + p2_emit helper
+│   ├── slurm/phase2.sbatch                #    one rack, six checks sequentially
+│   ├── checks/01_nccl_sweep.sh            #    test 2.1
+│   ├── checks/02_nccl_small_msg.sh        #    test 2.2
+│   ├── checks/03_rail_isolated.sh         #    test 2.3
+│   ├── checks/04_clusterkit_intra.sh      #    test 2.4
+│   ├── checks/05_osu_intra.sh             #    test 2.5
+│   ├── checks/06_topo_check.sh            #    test 2.6
+│   └── aggregate/report.py                #    rolls JSON fragments into Markdown
+├── phase3-fullscale/                      # [IMPLEMENTED]
+│   ├── slurm/env.sh                       #    paths, scales, thresholds, p3_emit helper
+│   ├── slurm/phase3.sbatch                #    one allocation, 11 checks + FEC/UFM bookends
+│   ├── checks/01_nccl_all5.sh             #    test 3.1
+│   ├── checks/02_nccl_variance.sh         #    test 3.2
+│   ├── checks/03_sharp_compare.sh         #    test 3.3
+│   ├── checks/04_clusterkit_fullscale.sh  #    test 3.4
+│   ├── checks/05_ar_congestion.sh         #    test 3.5
+│   ├── checks/06_ib_latency.sh            #    test 3.6
+│   ├── checks/07_fec_sweep.sh             #    test 3.7 (bookended baseline/final)
+│   ├── checks/08_hpl_fp64.sh              #    test 3.8
+│   ├── checks/09_hpl_mxp.sh               #    test 3.9
+│   ├── checks/10_hpcg.sh                  #    test 3.10
+│   ├── checks/11_ufm_snapshot.sh          #    test 3.11 (bookended baseline/final)
+│   ├── aggregate/report.py                #    Phase 3 aggregator + cliff/FEC/UFM audits
+│   └── aggregate/smoke_test.py            #    synthetic-input smoke test (happy + failure)
+├── phase4-storage/                        # [IMPLEMENTED]
+│   ├── slurm/env.sh                       #    paths, scales, thresholds, p4_emit helper
+│   ├── slurm/phase4.sbatch                #    one allocation, 8 checks + pre-flight
+│   ├── checks/01_ior_sequential.sh        #    test 4.1
+│   ├── checks/02_mdtest.sh                #    test 4.2
+│   ├── checks/03_fio_mixed.sh             #    test 4.3
+│   ├── checks/04_elbencho_gds.sh          #    test 4.4
+│   ├── checks/05_mlperf_storage.sh        #    test 4.5
+│   ├── checks/06_ckpt_storm.sh            #    test 4.6
+│   ├── checks/07_noisy_neighbor.sh        #    test 4.7
+│   ├── checks/08_gds_dataloader.sh        #    test 4.8 (shell wrapper)
+│   ├── checks/dataloader.py               #    test 4.8 PyTorch + cuFile worker
+│   ├── aggregate/report.py                #    Phase 4 aggregator + tail_audit cross-cutting
+│   └── aggregate/smoke_test.py            #    synthetic-input smoke test (happy + failure)
 ├── phase5-soak/                           # [NOT-YET-IMPLEMENTED]
 ├── phase6-multijob/                       # [NOT-YET-IMPLEMENTED]
 ├── phase7-aging/                          # [NOT-YET-IMPLEMENTED]
 └── sign-off/                              # [NOT-YET-IMPLEMENTED]
 ```
 
-The convention for every phase folder mirrors `day1-qualification/`:
+The convention for every phase folder mirrors `phase1-qualification/`:
 each test gets a numbered shell or Python entry point under `checks/`,
 results land as structured JSON, and an `aggregate/` directory rolls
 results into a Markdown report. This makes the entire system uniform

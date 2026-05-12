@@ -5,7 +5,7 @@ but not yet written as runnable code. Section numbers below mirror the phase
 numbers in the reference doc.
 
 When picking up a TODO: follow the convention established by
-`day1-qualification/` — numbered shell or Python entry points under
+`phase1-qualification/` — numbered shell or Python entry points under
 `checks/`, structured JSON output, and an `aggregate/` directory that
 rolls into a Markdown report. Wire each new script back into the
 reference doc table for that phase by replacing `[NOT-YET-IMPLEMENTED — …]`
@@ -17,7 +17,7 @@ Priority key:
 - **P2** — nice to have for ongoing health.
 
 Source key (Source column on each row):
-- **NEW** — write from scratch, following the `day1-qualification/` convention.
+- **NEW** — write from scratch, following the `phase1-qualification/` convention.
 - **DGXC** — wrap an upstream recipe from
   [NVIDIA/dgxc-benchmarking](https://github.com/NVIDIA/dgxc-benchmarking) via
   `llmb-run submit`. The script we write is the thin integration layer
@@ -48,43 +48,97 @@ Cross-cutting Phase 0 follow-ups (lightweight; do once vendor data lands):
 
 ## §2 — Phase 2 Intra-Rack Scale
 
-| ID    | What                              | Priority | Target path                                    |
-|-------|-----------------------------------|----------|------------------------------------------------|
-| 2.1   | NCCL sweep at 8/16/32/64 GPUs     | P0       | `phase2-intra-rack/nccl_sweep.sh`              |
-| 2.2   | NCCL small-message sweep          | P0       | `phase2-intra-rack/nccl_small_msg.sh`          |
-| 2.3   | Rail-isolated all-reduce          | P0       | `phase2-intra-rack/rail_isolated.sh`           |
-| 2.4   | ClusterKit intra-rack matrix      | P0       | `phase2-intra-rack/clusterkit_intra.sh`        |
-| 2.5   | OSU intra-rack collectives        | P1       | `phase2-intra-rack/osu_intra.sh`               |
-| 2.6   | Topology dump diff                | P0       | `phase2-intra-rack/topo_check.sh`              |
+All six tests are now IMPLEMENTED in `phase2-intra-rack/`.
+
+Implemented (links live in the reference doc):
+- 2.1 NCCL sweep at 8/16/32/64 GPUs → `phase2-intra-rack/checks/01_nccl_sweep.sh`
+- 2.2 NCCL small-message sweep      → `phase2-intra-rack/checks/02_nccl_small_msg.sh`
+- 2.3 Rail-isolated all-reduce      → `phase2-intra-rack/checks/03_rail_isolated.sh`
+- 2.4 ClusterKit intra-rack matrix  → `phase2-intra-rack/checks/04_clusterkit_intra.sh`
+- 2.5 OSU intra-rack collectives    → `phase2-intra-rack/checks/05_osu_intra.sh`
+- 2.6 Topology dump diff            → `phase2-intra-rack/checks/06_topo_check.sh`
+- Slurm wrapper                     → `phase2-intra-rack/slurm/phase2.sbatch`
+- Aggregator                        → `phase2-intra-rack/aggregate/report.py`
+
+Cross-cutting Phase 2 follow-ups (lightweight; do once Phase 2 runs on real hardware):
+- Capture a known-good NCCL topology XML and write it to `${P2_REF_TOPO}` (default `/opt/qualification/phase2/reference/nccl_topo_ref.xml`). Until that's in place, check 2.6 emits a warn and saves the captured dump as a candidate reference.
+- Tune `NCCL_AR_BUSBW_MIN_{8,16,32,64}GPU_GBS` once we've seen real B200/NDR busbw numbers — current defaults are conservative guesses.
+- Consider `P2_OSU_NCCL_AGREEMENT_PCT`: 3% may be too tight against MPI vs NCCL collective implementations; revisit after first run.
 
 ## §3 — Phase 3 Cross-Spine Scale
 
-| ID    | What                              | Priority | Source | Target path                                    |
-|-------|-----------------------------------|----------|--------|------------------------------------------------|
-| 3.1   | NCCL all-5 at 256/512/1024        | P0       | DGXC   | `phase3-fullscale/nccl_sweep.sh`               |
-| 3.2   | NCCL variance test (100 runs)     | P0       | DGXC   | `phase3-fullscale/nccl_variance.sh`            |
-| 3.3   | SHARP on/off comparison           | P0       | DGXC   | `phase3-fullscale/sharp_compare.sh`            |
-| 3.4   | All-pairs IB fullscale sweep      | P0       | NEW    | `phase3-fullscale/clusterkit_fullscale.sh`     |
-| 3.5   | Adaptive-routing congestion test  | P0       | NEW    | `phase3-fullscale/ar_congestion.sh`            |
-| 3.6   | IB latency sweep                  | P1       | NEW    | `phase3-fullscale/ib_latency.sh`               |
-| 3.7   | FEC / BER cluster-wide capture    | P0       | NEW    | `phase3-fullscale/fec_sweep.sh`                |
-| 3.8   | HPL FP64 at full scale            | P1       | NEW    | `phase3-fullscale/hpl_fp64.sh`                 |
-| 3.9   | HPL-MxP at full scale             | P0       | NEW    | `phase3-fullscale/hpl_mxp.sh`                  |
-| 3.10  | HPCG at full scale                | P1       | NEW    | `phase3-fullscale/hpcg.sh`                     |
-| 3.11  | UFM telemetry snapshot            | P0       | NEW    | `phase3-fullscale/ufm_snapshot.sh`             |
+All eleven tests are now IMPLEMENTED in `phase3-fullscale/`.
+
+Implemented (links live in the reference doc):
+- 3.1  NCCL all-5 at 256/512/1024 GPUs → `phase3-fullscale/checks/01_nccl_all5.sh`
+- 3.2  NCCL variance (100× all-reduce) → `phase3-fullscale/checks/02_nccl_variance.sh`
+- 3.3  SHARP on/off comparison        → `phase3-fullscale/checks/03_sharp_compare.sh`
+- 3.4  ClusterKit pair-matrix (1024)  → `phase3-fullscale/checks/04_clusterkit_fullscale.sh`
+- 3.5  AR-congestion recovery test    → `phase3-fullscale/checks/05_ar_congestion.sh`
+- 3.6  IB latency (intra-leaf+spine)  → `phase3-fullscale/checks/06_ib_latency.sh`
+- 3.7  FEC / pre-FEC BER bookend      → `phase3-fullscale/checks/07_fec_sweep.sh`
+- 3.8  HPL FP64                       → `phase3-fullscale/checks/08_hpl_fp64.sh`
+- 3.9  HPL-MxP                        → `phase3-fullscale/checks/09_hpl_mxp.sh`
+- 3.10 HPCG                           → `phase3-fullscale/checks/10_hpcg.sh`
+- 3.11 UFM REST snapshot bookend      → `phase3-fullscale/checks/11_ufm_snapshot.sh`
+- Slurm wrapper                       → `phase3-fullscale/slurm/phase3.sbatch`
+- Aggregator                          → `phase3-fullscale/aggregate/report.py`
+- Smoke test (synthetic inputs)       → `phase3-fullscale/aggregate/smoke_test.py`
+
+Cross-cutting Phase 3 follow-ups (lightweight; do once Phase 3 runs on real hardware):
+- Fill `P3_HPL_MXP_REF_TFLOPS` in `slurm/env.sh` with NVIDIA's published B200
+  HPL-MxP reference number once we know which DGX OS / NVIDIA HPC Benchmarks
+  release we're targeting. Until then, check 3.9 emits `warn` instead of
+  failing so we can capture the measured number on first run.
+- Stage `HPL.dat` (FP64) and `HPL_MxP.dat` next to their respective binaries
+  under `${INSTALL_PREFIX}/{hpl,hpl-mxp}/`. They typically come out of the
+  NVIDIA HPC Benchmarks container.
+- Tune the 1024-GPU NCCL busbw minimums (`NCCL_AR_BUSBW_MIN_1024GPU_GBS` and
+  friends) and the IB latency ceilings (`P3_IB_*_LAT_MAX_US`) after first
+  real-hardware run. Current defaults are conservative guesses.
+- Wire `UFM_HOST` / `UFM_USER` / `UFM_PASS_FILE` into the bootstrap secrets
+  flow. Right now the password file path is a static `/etc/ufm.pass`.
+- Decide whether to keep the cliff threshold at 5% (`P3_64_TO_1024_CLIFF_PCT`)
+  or relax to 8% once we know the real spine topology utilisation.
 
 ## §4 — Phase 4 Storage Scale
 
-| ID    | What                              | Priority | Target path                                    |
-|-------|-----------------------------------|----------|------------------------------------------------|
-| 4.1   | IOR sequential at 1024 clients    | P0       | `phase4-storage/ior_sequential.sh`             |
-| 4.2   | mdtest at 1024 ranks              | P0       | `phase4-storage/mdtest.sh`                     |
-| 4.3   | FIO mixed                         | P1       | `phase4-storage/fio_mixed.sh`                  |
-| 4.4   | Elbencho with GDS                 | P0       | `phase4-storage/elbencho_gds.sh`               |
-| 4.5   | MLPerf Storage benchmark          | P0       | `phase4-storage/mlperf_storage.sh`             |
-| 4.6   | Checkpoint write storm            | P0       | `phase4-storage/ckpt_storm.sh`                 |
-| 4.7   | Noisy-neighbour storage test      | P0       | `phase4-storage/noisy_neighbor.sh`             |
-| 4.8   | GDS PyTorch dataloader path test  | P0       | `phase4-storage/gds_dataloader.py`             |
+All eight tests are now IMPLEMENTED in `phase4-storage/`.
+
+Implemented (links live in the reference doc):
+- 4.1 IOR sequential at 1024 clients   → `phase4-storage/checks/01_ior_sequential.sh`
+- 4.2 mdtest at 1024 ranks             → `phase4-storage/checks/02_mdtest.sh`
+- 4.3 FIO mixed (per-client IOPS, P99) → `phase4-storage/checks/03_fio_mixed.sh`
+- 4.4 Elbencho with GDS                → `phase4-storage/checks/04_elbencho_gds.sh`
+- 4.5 MLPerf Storage benchmark         → `phase4-storage/checks/05_mlperf_storage.sh`
+- 4.6 Checkpoint write storm           → `phase4-storage/checks/06_ckpt_storm.sh`
+- 4.7 Noisy-neighbour storage test     → `phase4-storage/checks/07_noisy_neighbor.sh`
+- 4.8 GDS PyTorch dataloader path test → `phase4-storage/checks/08_gds_dataloader.sh` + `checks/dataloader.py`
+- Slurm wrapper                        → `phase4-storage/slurm/phase4.sbatch`
+- Aggregator                           → `phase4-storage/aggregate/report.py` (with `tail_audit` cross-cutting)
+- Smoke test (synthetic inputs)        → `phase4-storage/aggregate/smoke_test.py`
+
+Cross-cutting Phase 4 follow-ups (lightweight; do once Phase 4 runs on real hardware):
+- Decide the parallel filesystem mount point and pin `P4_STORAGE_ROOT` in
+  `slurm/env.sh` (no safe default; pre-flight aborts fast if unset/unwritable).
+- Fill `P4_MLPERF_REF_SAMPLES_PER_SEC` in `slurm/env.sh` with the vendor's
+  published per-workload reference once we pick the MLPerf Storage workload
+  (Unet3D / ResNet50 / CosmoFlow). Until then, check 4.5 emits `warn`
+  instead of failing so we can capture the measured number on first run.
+- Tune `P4_IOR_READ_GBS_MIN` / `P4_IOR_WRITE_GBS_MIN` /
+  `P4_CKPT_AGG_GBS_MIN` / `P4_ELBENCHO_LINE_RATE_GBS` to the vendor-spec'd
+  numbers for the delivered parallel filesystem (current defaults are
+  conservative; real PFS should comfortably exceed them).
+- Decide whether the 50/50 reader/writer split in `07_noisy_neighbor.sh`
+  is the right policy for the cluster, or whether a 7/1 (training-heavy)
+  or 3/1 mix better represents production. Current default is 50/50.
+- Install a CUDA-12.x-matched `torch` wheel during `install_phase4` (the
+  bootstrap currently hint-only checks for `python3 -c 'import torch'`
+  and skips check 4.8 if absent). Pick the wheel index that matches the
+  `nvidia-smi` CUDA version on the cluster.
+- Confirm `libcufile` (cuFile / GDS userspace) is in `ldconfig` on every
+  compute node — checks 4.4 and 4.8 both skip cleanly if it isn't. The
+  bootstrap uses `vendor_check` only; cuFile install is operator-owned.
 
 ## §5 — Phase 5 Long Soak (DeepSeek-V3)
 
@@ -135,7 +189,7 @@ Cross-cutting Phase 0 follow-ups (lightweight; do once vendor data lands):
 
 ## Cross-cutting follow-ups for Phase 1 (already implemented)
 
-A few items that should be tightened on the existing `day1-qualification/`
+A few items that should be tightened on the existing `phase1-qualification/`
 scaffold:
 
 - Fill in `EXPECTED_DRIVER_VERSION` and `EXPECTED_FM_VERSION` in `slurm/env.sh`

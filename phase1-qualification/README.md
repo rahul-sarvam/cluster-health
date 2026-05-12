@@ -20,7 +20,7 @@ It does **not** test the fabric end-to-end. That is the next phase
 ## Layout
 
 ```
-day1-qualification/
+phase1-qualification/
 ├── README.md
 ├── slurm/
 │   ├── qualify_all_nodes.sbatch    # Slurm array job, one task per node

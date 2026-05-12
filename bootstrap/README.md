@@ -33,11 +33,21 @@ at the bottom of the script.
 | 1     | pip               | `pandas`, `pyarrow`, `numpy` |
 | 1     | vendor (verify)   | DCGM (`dcgmi`), OpenMPI (`mpirun`) |
 | 1     | source build      | `nvbandwidth`, `gpu-burn`, `nccl-tests`, `BabelStream` (cuda-stream) |
+| 2     | vendor (verify)   | NVIDIA HPC SDK / `clusterkit` (override path via `HPCSDK_DIR`) |
+| 2     | source build      | `osu-micro-benchmarks` (tarball from MVAPICH; CUDA + MPI build) |
+| 3     | apt               | `jq` (used by check 11 to count UFM port entries) |
+| 3     | vendor (verify)   | HPL FP64 (`xhpl`), HPL-MxP (`xhpl_mxp`), HPCG (`xhpcg`), `llmb-run`. All from the NVIDIA HPC Benchmarks container; override locations via `HPL_BIN` / `HPL_MXP_BIN` / `HPCG_BIN` / `LLMB_RUN`. Phase 3 also re-confirms the Phase 1 `nccl-tests` and Phase 2 `clusterkit` builds. |
+| 3     | reminder          | `UFM_HOST` / `UFM_USER` / `UFM_PASS_FILE` — surfaced as a config hint; unset is fine (check 3.11 skips cleanly) |
+| 4     | apt               | `fio`, `jq`, `libnuma-dev`, `autoconf`, `automake`, `libtool`, `libboost-program-options-dev`, `libboost-system-dev`, `libncurses-dev`, `libaio-dev`, `uuid-dev` |
+| 4     | pip               | `numpy`, `mlperf-storage`. `torch` is hint-only (huge, version-sensitive — operator installs the cu12-matched wheel) |
+| 4     | vendor (verify)   | `libcufile` (GPUDirect Storage, ships with CUDA toolkit's `nvidia-gds` package). Test 4.4 / 4.8 skip cleanly if absent. |
+| 4     | source build      | `ior` + `mdtest` (single tree from `hpc/ior` @ `IOR_TAG`), `elbencho` (from `breuner/elbencho` @ `ELBENCHO_TAG`, built with `CUDA_SUPPORT=1 CUFILE_SUPPORT=1` when `nvcc` is present, CPU-only otherwise) |
+| 4     | reminder          | `P4_STORAGE_ROOT` — surfaced as a config hint; the sbatch wrapper pre-flights this knob and aborts if it's unwritable |
 
 Source builds land at `${INSTALL_PREFIX}/bin/` (or
 `${INSTALL_PREFIX}/<tool>/` for multi-file tools). The default prefix is
 `/opt/qualification`, matching the paths in
-[`day1-qualification/slurm/env.sh`](../day1-qualification/slurm/env.sh).
+[`phase1-qualification/slurm/env.sh`](../phase1-qualification/slurm/env.sh).
 
 Vendor-supplied components (NVIDIA driver, CUDA toolkit, MLNX_OFED,
 fabric manager, DCGM) are **never** auto-installed — those require
@@ -71,6 +81,9 @@ Typical workflow:
 | `all`    | Default. Installs every phase. Skips items already in place.                  |
 | `phase0` | Only the Phase 0 block.                                                       |
 | `phase1` | Only the Phase 1 block.                                                       |
+| `phase2` | Only the Phase 2 block (HPC SDK / ClusterKit verify + OSU build).             |
+| `phase3` | Only the Phase 3 block (HPL / HPL-MxP / HPCG / llmb-run verify + UFM hint).   |
+| `phase4` | Only the Phase 4 block (IOR/mdtest + elbencho builds, fio, MLPerf Storage, libcufile verify). |
 | `verify` | No installs. Reports each item as either present (`SKIP`) or missing (`FAIL`). Useful for a pre-flight gate. |
 
 ## Knobs
@@ -84,6 +97,17 @@ All knobs are env vars; defaults are sensible.
 | `GPUBURN_REF`     | `master`              | gpu-burn ref (no real release cadence; master is stable).|
 | `NCCL_TESTS_TAG`  | `v2.13.10`            | Pinned NVIDIA/nccl-tests tag.                            |
 | `BABELSTREAM_TAG` | `v5.0`                | Pinned UoB-HPC/BabelStream tag.                          |
+| `OSU_TAG`         | `7.4`                 | Pinned OSU Micro-Benchmarks version.                     |
+| `HPCSDK_DIR`      | `/opt/nvidia/hpc_sdk/Linux_x86_64/24.5` | Where ClusterKit is verified.          |
+| `HPL_BIN`         | `${INSTALL_PREFIX}/hpl/bin/xhpl`         | Where Phase 3 looks for `xhpl`.       |
+| `HPL_MXP_BIN`     | `${INSTALL_PREFIX}/hpl-mxp/bin/xhpl_mxp` | Where Phase 3 looks for `xhpl_mxp`.   |
+| `HPCG_BIN`        | `${INSTALL_PREFIX}/hpcg/bin/xhpcg`       | Where Phase 3 looks for `xhpcg`.      |
+| `LLMB_RUN`        | `llmb-run` (on PATH)  | DGXC NCCL-recipes launcher used by Phase 3.              |
+| `IOR_TAG`         | `4.0.0`               | Pinned `hpc/ior` tag (builds both `ior` and `mdtest`).   |
+| `ELBENCHO_TAG`    | `v3.0-11`             | Pinned `breuner/elbencho` tag.                           |
+| `IOR_BIN`         | `${INSTALL_PREFIX}/ior/bin/ior`          | Where Phase 4 looks for `ior`.        |
+| `MDTEST_BIN`      | `${INSTALL_PREFIX}/ior/bin/mdtest`       | Where Phase 4 looks for `mdtest`.     |
+| `ELBENCHO_BIN`    | `${INSTALL_PREFIX}/bin/elbencho`         | Where Phase 4 looks for `elbencho`.   |
 | `DRY_RUN`         | `0`                   | Set to `1` to print actions without executing.           |
 
 ## Exit codes
@@ -97,20 +121,26 @@ All knobs are env vars; defaults are sensible.
 
 ## Adding a new phase
 
-When Phase 2 (intra-rack) lands:
+Phases 0–4 are now wired up; Phase 5 (long soak) is next. The pattern:
 
 1. Append a function:
    ```bash
-   install_phase2() {
-       section "Phase 2 — Intra-Rack Scale"
+   install_phase5() {
+       section "Phase 5 — Long Soak"
        apt_pkg <whatever>
-       build_from_source <whatever>
+       pip_pkg <whatever>
+       vendor_check <label> <cmd> <hint>
+       build_from_source <name> <repo> <ref> <output_file> <build_cmd>
    }
    ```
-2. Add a `phase2` case-arm to the dispatcher and call `install_phase2` from
+2. Add a `phase5` case-arm to the dispatcher and call `install_phase5` from
    the `all`/`verify` arm.
-3. Document the new packages and builds in the table at the top of this
-   README.
+3. Update the usage string at the top of `install.sh` (`Usage:` block and the
+   `Unknown mode` error) so the new mode is documented in `--help`-style
+   output.
+4. Document the new packages and builds in the install table at the top of
+   this README, add a `phase5` row to the modes table, and add any new
+   knobs to the knobs table.
 
 No other changes needed — the helpers (`apt_pkg`, `pip_pkg`,
 `vendor_check`, `build_from_source`) are designed to be reused unchanged.

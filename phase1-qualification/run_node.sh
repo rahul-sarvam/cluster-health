@@ -5,7 +5,7 @@
 # code is the number of failed checks (0 = clean).
 set -uo pipefail
 
-QUAL_ROOT="${QUAL_ROOT:-/opt/qualification/day1}"
+QUAL_ROOT="${QUAL_ROOT:-/opt/qualification/phase1}"
 source "${QUAL_ROOT}/slurm/env.sh"
 
 CHECKS=(

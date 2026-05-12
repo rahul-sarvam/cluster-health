@@ -7,7 +7,7 @@ set -u
 # -----------------------------------------------------------------------------
 # Paths
 # -----------------------------------------------------------------------------
-export QUAL_ROOT="${QUAL_ROOT:-/opt/qualification/day1}"
+export QUAL_ROOT="${QUAL_ROOT:-/opt/qualification/phase1}"
 export QUAL_RESULTS="${QUAL_RESULTS:-${QUAL_ROOT}/results}"
 export QUAL_LOGS="${QUAL_LOGS:-${QUAL_ROOT}/logs}"
 mkdir -p "${QUAL_RESULTS}" "${QUAL_LOGS}"
