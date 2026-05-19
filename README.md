@@ -9,6 +9,11 @@ cluster with minor parameter changes.
 > [`CLUSTER_HEALTH_REFERENCE.md`](CLUSTER_HEALTH_REFERENCE.md)
 > end-to-end. It's the design doc. This README is the runbook on top
 > of it.
+>
+> **If you're the cluster provider:** the document you want is
+> [`HANDOVER_CHECKLIST.md`](HANDOVER_CHECKLIST.md). It enumerates
+> everything you need to install on the cluster and every piece of
+> information you need to deliver to Sarvam at handover.
 
 ## What this repo contains
 
