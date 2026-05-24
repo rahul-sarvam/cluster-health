@@ -5,6 +5,15 @@ clusters at Sarvam. Written initially for our 1024× B200 acceptance
 (128 nodes × 8 GPUs), but the structure carries over to any future
 cluster with minor parameter changes.
 
+> **Note on this branch (`e2e`).** The hardware substrate has changed:
+> instead of a bare-metal handover, we are tenanting on E2E Networks'
+> managed Kubernetes + Slinky platform. The bare-metal work on `main` is
+> preserved verbatim and remains valid for any future bare-metal handover,
+> but on this branch we are re-shaping the strategy for a tenant model.
+> Read [`E2E_STRATEGY.md`](E2E_STRATEGY.md) first. The accompanying
+> [`PROVIDER_QUESTIONS.md`](PROVIDER_QUESTIONS.md) is what we hand E2E to
+> unblock the rest of the work.
+
 > **Where to start reading:** if you're new to the team, read
 > [`CLUSTER_HEALTH_REFERENCE.md`](CLUSTER_HEALTH_REFERENCE.md)
 > end-to-end. It's the design doc. This README is the runbook on top
