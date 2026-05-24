@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project-specific exception: e2e-8node-trial/lib/ is not a Python build dir,
+# it holds shell + py helpers for the 8-node acceptance run.
+!e2e-8node-trial/lib/
+!e2e-8node-trial/lib/**
