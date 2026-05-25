@@ -8,6 +8,13 @@ source "${QUAL_ROOT}/slurm/env.sh"
 OUT="${QUAL_LOGS}/$(hostname)_gpu_burn.txt"
 TELE="${QUAL_LOGS}/$(hostname)_gpu_burn_telemetry.csv"
 
+# Skip cleanly if gpu-burn isn't installed (e.g. nvcc unavailable so
+# bootstrap couldn't build it on this image).
+if ! [[ -d "${GPU_BURN_DIR}" && -x "${GPU_BURN_DIR}/gpu_burn" ]]; then
+    qual_emit gpu_burn skip reason="gpu_burn_binary_missing" path="${GPU_BURN_DIR}"
+    exit 0
+fi
+
 # Start telemetry collector in the background, sample every 2s.
 (
     echo "ts,gpu,temp_c,power_w,sm_clock_mhz,mem_clock_mhz,pstate,throttle"

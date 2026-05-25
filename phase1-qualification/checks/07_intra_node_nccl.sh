@@ -9,6 +9,13 @@ source "${QUAL_ROOT}/slurm/env.sh"
 OUT_AR="${QUAL_LOGS}/$(hostname)_nccl_ar.txt"
 OUT_A2A="${QUAL_LOGS}/$(hostname)_nccl_a2a.txt"
 
+# Skip cleanly if nccl-tests aren't built (nvcc unavailable so bootstrap
+# couldn't build them on this image).
+if ! [[ -x "${NCCL_TESTS_DIR}/all_reduce_perf" ]]; then
+    qual_emit intra_node_nccl skip reason="nccl_tests_not_built" path="${NCCL_TESTS_DIR}/all_reduce_perf"
+    exit 0
+fi
+
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,GRAPH,TUNING
 # Force intra-node only.

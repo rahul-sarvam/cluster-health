@@ -146,11 +146,23 @@ else
             set -e
             export DEBIAN_FRONTEND=noninteractive
             apt-get update -qq
+            # Core deps for our source builds + small utilities the check
+            # scripts assume are present (bc, jq, numactl).
             apt-get install -y --no-install-recommends \
+                bc \
                 build-essential cmake git pkg-config \
                 libnccl-dev libnuma-dev \
                 openmpi-bin openmpi-common libopenmpi-dev \
                 perftest numactl chrony jq python3-pip
+            # CUDA toolkit: needed for source builds (nccl-tests, nvbandwidth,
+            # gpu-burn, BabelStream). Ubuntu ships nvidia-cuda-toolkit which
+            # provides nvcc at /usr/bin/nvcc; ABI-compatible with the libcuda
+            # the runtime bind-mounts. Best-effort: a failure here means the
+            # collective benchmarks will skip cleanly rather than break the run.
+            apt-get install -y --no-install-recommends nvidia-cuda-toolkit \
+                || echo "WARN: nvidia-cuda-toolkit install failed; nvcc-dependent checks will skip"
+            echo "--- nvcc location and version ---"
+            command -v nvcc && nvcc --version || echo "nvcc still not on PATH"
          ' || echo "    apt pre-install returned non-zero — see slurm-logs/apt-deps-*"
 
     echo "==> [2b/7] build phase1 workloads on compute nodes (nvbandwidth, gpu-burn, nccl-tests, BabelStream)"
@@ -208,14 +220,12 @@ else
         "${SCRIPT_DIR}/sbatch/phase1_8node.sbatch"
     record $? phase1
 
-    # Cohort analysis across the per-host phase1 results (the existing
-    # phase1 aggregator handles outlier detection across nodes).
-    if [[ -r "${REPO_ROOT}/phase1-qualification/aggregate/report.py" ]]; then
-        python3 "${REPO_ROOT}/phase1-qualification/aggregate/report.py" \
-            --results-dir "${QUAL_RESULTS}" \
-            --out "${QUAL_RESULTS}/phase1_cohort_report.md" \
-            || echo "    phase1 cohort aggregator returned non-zero"
-    fi
+    # NOTE: the existing phase1-qualification/aggregate/report.py expects a
+    # full chain (parse_results.py --gather → cohort_analysis.py → report.py)
+    # to produce cohort.parquet / outliers.csv first. Our executive aggregator
+    # at the end of run_all.sh handles cross-host summary from the per-host
+    # JSONs directly, so we skip the phase1 cohort aggregator here. If you
+    # want the full per-host outlier table, run the chain manually post-run.
 fi
 
 # -----------------------------------------------------------------------------

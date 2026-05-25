@@ -5,7 +5,14 @@
 set -uo pipefail
 source "${QUAL_ROOT}/slurm/env.sh"
 
-OUT="${QUAL_LOGS}/$(hostname)_nvbandwidth.txt"
+export OUT="${QUAL_LOGS}/$(hostname)_nvbandwidth.txt"
+
+# Skip cleanly if nvbandwidth isn't installed (e.g. nvcc unavailable
+# so bootstrap couldn't build it on this image).
+if ! [[ -x "${NVBANDWIDTH_BIN}" ]]; then
+    qual_emit nvbandwidth skip reason="nvbandwidth_binary_missing" path="${NVBANDWIDTH_BIN}"
+    exit 0
+fi
 
 # We run the most important matrices. See `nvbandwidth -l` for the full set.
 "${NVBANDWIDTH_BIN}" \

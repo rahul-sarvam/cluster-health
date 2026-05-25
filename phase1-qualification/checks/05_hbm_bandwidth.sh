@@ -7,6 +7,14 @@ set -uo pipefail
 source "${QUAL_ROOT}/slurm/env.sh"
 
 OUT="${QUAL_LOGS}/$(hostname)_babelstream.txt"
+
+# Skip cleanly if BabelStream / cuda-stream isn't installed (e.g. nvcc
+# unavailable so bootstrap couldn't build it on this image).
+if ! [[ -x "${BABELSTREAM_BIN}" ]]; then
+    qual_emit hbm_bandwidth skip reason="babelstream_binary_missing" path="${BABELSTREAM_BIN}"
+    exit 0
+fi
+
 : > "${OUT}"
 
 triads=()
