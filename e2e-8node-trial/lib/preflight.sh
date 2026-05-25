@@ -87,34 +87,52 @@ run mount | grep -vE 'type (tmpfs|devtmpfs|proc|sysfs|cgroup|fuse|squashfs|overl
 run df -h "${E2E_RUN_DIR}"
 
 # Fan out to every compute node and read+write the same path.
+# Write the remote script to a file so $(hostname) expands on the
+# compute node rather than getting eaten by inline quote-escaping.
+PROBE_SCRIPT="${PRE}/_remote_probe.sh"
+cat > "${PROBE_SCRIPT}" <<EOF_HEAD
+#!/bin/bash
+TOKEN_FILE="${TOKEN_FILE}"
+PRE="${PRE}"
+EOF_HEAD
+cat >> "${PROBE_SCRIPT}" <<'EOF_TAIL'
+HOST="$(hostname)"
+if [[ ! -r "$TOKEN_FILE" ]]; then
+    echo "NOT_READABLE on $HOST"
+    exit 2
+fi
+head -1 "$TOKEN_FILE"
+echo "compute-side $HOST wrote at $(date -u +%FT%TZ)" > "$PRE/shared_token_writeback.$HOST.txt"
+EOF_TAIL
+chmod +x "${PROBE_SCRIPT}"
+
 if srun -p "${E2E_PARTITION}" -N "${E2E_NODE_COUNT}" --ntasks-per-node=1 \
         --output="${PRE}/shared_fs_probe.%N.out" \
         --error="${PRE}/shared_fs_probe.%N.err" \
         --time=00:02:00 \
-        bash -c "
-            if [[ ! -r '${TOKEN_FILE}' ]]; then
-                echo 'NOT_READABLE on \$(hostname)'; exit 2
-            fi
-            head -1 '${TOKEN_FILE}'
-            echo \"compute-side \$(hostname) wrote at \$(date -u +%FT%TZ)\" >> '${PRE}/shared_token_writeback.\$(hostname).txt'
-        " >>"${LOG}" 2>&1; then
-    emit "shared fs OK on all ${E2E_NODE_COUNT} nodes"
+        bash "${PROBE_SCRIPT}" >>"${LOG}" 2>&1; then
     SHARED_FS_OK=1
 else
-    emit "shared fs probe FAILED — compute nodes cannot see ${E2E_RUN_DIR}"
     SHARED_FS_OK=0
 fi
-
-# Count the writebacks we got.
 WRITEBACK_COUNT="$(ls "${PRE}"/shared_token_writeback.*.txt 2>/dev/null | wc -l)"
-emit "writebacks received: ${WRITEBACK_COUNT}/${E2E_NODE_COUNT}"
+if [[ "${SHARED_FS_OK}" -eq 1 && "${WRITEBACK_COUNT}" -eq "${E2E_NODE_COUNT}" ]]; then
+    emit "shared fs OK on all ${E2E_NODE_COUNT} nodes (writebacks=${WRITEBACK_COUNT})"
+elif [[ "${SHARED_FS_OK}" -eq 1 ]]; then
+    emit "shared fs partial: srun OK but only ${WRITEBACK_COUNT}/${E2E_NODE_COUNT} writebacks landed"
+    SHARED_FS_OK=0
+else
+    emit "shared fs probe FAILED — compute nodes cannot see ${E2E_RUN_DIR}"
+fi
+
+# (writeback count emitted above as part of the OK/partial/fail message)
 
 # -----------------------------------------------------------------------------
 # 4. GPU / IB / driver visibility from a compute node (single-node probe)
 # -----------------------------------------------------------------------------
-emit "=== compute-node probe (single node) ==="
+emit "=== compute-node probe (single node, --gpus-per-node=${E2E_GPUS_PER_NODE:-8}) ==="
 srun -p "${E2E_PARTITION}" -N 1 --ntasks-per-node=1 \
-     --gpus-per-node=8 --time=00:05:00 \
+     --gpus-per-node="${E2E_GPUS_PER_NODE:-8}" --time=00:05:00 \
      --output="${PRE}/compute_probe.out" \
      --error="${PRE}/compute_probe.err" \
      bash -c '

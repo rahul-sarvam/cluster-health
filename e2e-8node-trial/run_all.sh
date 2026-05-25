@@ -86,6 +86,22 @@ record() {
 }
 
 # -----------------------------------------------------------------------------
+# Login-side prep: ensure all our scripts are executable and pandas
+# is installed for the per-phase aggregators that run on this pod.
+# -----------------------------------------------------------------------------
+echo "==> [0/7] login-side prep"
+chmod -R +x \
+    "${REPO_ROOT}/bootstrap" \
+    "${REPO_ROOT}/phase1-qualification" \
+    "${REPO_ROOT}/phase2-intra-rack" \
+    "${REPO_ROOT}/phase3-fullscale" \
+    "${REPO_ROOT}/e2e-8node-trial" 2>/dev/null || true
+# pandas + pyyaml are needed by the phase1 aggregator on this pod.
+# Use --break-system-packages because Ubuntu 24 / PEP 668 protects /usr.
+pip install --quiet --break-system-packages pandas pyyaml 2>/dev/null \
+    || echo "    couldn't install pandas/pyyaml on login pod (phase1 cohort aggregator may fail, non-fatal)"
+
+# -----------------------------------------------------------------------------
 # PHASE: pre-flight
 # -----------------------------------------------------------------------------
 if is_skipped preflight; then
@@ -109,19 +125,42 @@ fi
 
 # -----------------------------------------------------------------------------
 # PHASE: bootstrap on compute nodes (idempotent)
+#   - first install just the apt build deps we need for the workloads
+#     we're actually going to run (substrate + collectives focus,
+#     so skip Phase 4 storage builds entirely)
+#   - then run install.sh phase0 phase1 only (skip phase2/3/4 vendor
+#     checks for tooling we know is missing; their checks will skip
+#     cleanly at runtime)
 # -----------------------------------------------------------------------------
 if is_skipped bootstrap; then
     echo "==> [skip] bootstrap"
 else
-    echo "==> [2/7] bootstrap (apt + pip + source builds) on all compute nodes"
-    # Run bootstrap once per node. The installer is idempotent so this
-    # is safe on re-runs. We use srun with one task per node.
+    echo "==> [2a/7] apt build deps on compute nodes (with --gpus-per-node so NVIDIA mounts attach)"
     srun -p "${E2E_PARTITION}" \
          -N "${E2E_NODE_COUNT}" --ntasks-per-node=1 \
+         --gpus-per-node="${E2E_GPUS_PER_NODE}" \
+         --time=00:15:00 \
+         --output="${E2E_RUN_DIR}/slurm-logs/apt-deps-%N.out" \
+         --error="${E2E_RUN_DIR}/slurm-logs/apt-deps-%N.err" \
+         bash -c '
+            set -e
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update -qq
+            apt-get install -y --no-install-recommends \
+                build-essential cmake git pkg-config \
+                libnccl-dev libnuma-dev \
+                openmpi-bin openmpi-common libopenmpi-dev \
+                perftest numactl chrony jq python3-pip
+         ' || echo "    apt pre-install returned non-zero — see slurm-logs/apt-deps-*"
+
+    echo "==> [2b/7] build phase1 workloads on compute nodes (nvbandwidth, gpu-burn, nccl-tests, BabelStream)"
+    srun -p "${E2E_PARTITION}" \
+         -N "${E2E_NODE_COUNT}" --ntasks-per-node=1 \
+         --gpus-per-node="${E2E_GPUS_PER_NODE}" \
          --time=00:30:00 \
          --output="${E2E_RUN_DIR}/slurm-logs/bootstrap-%N.out" \
          --error="${E2E_RUN_DIR}/slurm-logs/bootstrap-%N.err" \
-         bash "${REPO_ROOT}/bootstrap/install.sh" all \
+         bash "${REPO_ROOT}/bootstrap/install.sh" phase0 phase1 \
          || echo "    bootstrap srun returned non-zero — see slurm-logs/bootstrap-*"
     record 0 bootstrap   # don't fail the run on bootstrap; individual checks will surface what's broken
 fi
@@ -135,6 +174,7 @@ else
     echo "==> [3/7] per-node inventory"
     srun -p "${E2E_PARTITION}" \
          -N "${E2E_NODE_COUNT}" --ntasks-per-node=1 \
+         --gpus-per-node="${E2E_GPUS_PER_NODE}" \
          --time=00:10:00 \
          --output="${E2E_RUN_DIR}/slurm-logs/inventory-%N.out" \
          --error="${E2E_RUN_DIR}/slurm-logs/inventory-%N.err" \

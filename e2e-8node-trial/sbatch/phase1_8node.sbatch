@@ -34,7 +34,7 @@ if dmesg | grep -qE 'NVRM: Xid.*: (31|43|45|61|63|64|74|79)'; then
     exit 1
 fi
 
-"${QUAL_ROOT}/run_node.sh"
+bash "${QUAL_ROOT}/run_node.sh"
 RC=$?
 
 # Roll the per-check JSONs into a per-host JSON.
